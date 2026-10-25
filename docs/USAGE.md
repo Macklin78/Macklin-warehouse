@@ -88,6 +88,6 @@
 | 路径 | 说明 |
 | --- | --- |
 | `src/` | 网页版全部内容（`index.html` + `styles.css` + `app.js`），零依赖 |
-| `electron/main.js` | 桌面版外壳：窗口、图标、快捷键、窗口尺寸记忆 |
+| `electron/main.js` | 桌面版那层窗口：窗口、图标、快捷键、记住窗口大小 |
 | `build/` | 应用图标 |
 | `dist/` | 打包产物（`npm run dist` 后生成） |
