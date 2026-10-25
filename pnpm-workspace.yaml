@@ -1,0 +1,6 @@
+# pnpm 10+ 把「允许执行安装脚本的依赖」白名单放在这里
+# （Electron 需要在 postinstall 阶段下载对应平台的运行时）
+onlyBuiltDependencies:
+  - electron
+  - electron-builder
+  - electron-winstaller

@@ -1,0 +1,12 @@
+# 统一用 LF 换行（Windows 上也保持一致）
+* text=auto eol=lf
+
+*.cmd  text eol=crlf
+*.bat  text eol=crlf
+
+# 二进制资源
+*.png  binary
+*.ico  binary
+*.jpg  binary
+*.dmg  binary
+*.exe  binary

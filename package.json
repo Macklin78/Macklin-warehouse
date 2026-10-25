@@ -1,0 +1,75 @@
+{
+  "name": "dafiyu-wheel",
+  "productName": "抽奖转盘",
+  "version": "1.1.0",
+  "description": "带权重的抽奖转盘 · A weighted lottery / lucky wheel, runs as a desktop app or a single web page.",
+  "main": "electron/main.js",
+  "author": "大肥鱼",
+  "license": "MIT",
+  "private": true,
+  "keywords": [
+    "lottery",
+    "lucky-wheel",
+    "raffle",
+    "spinner",
+    "electron",
+    "抽奖",
+    "转盘"
+  ],
+  "scripts": {
+    "start": "electron .",
+    "dev": "electron . --dev",
+    "dist": "electron-builder --win portable --x64",
+    "dist:dir": "electron-builder --win dir --x64",
+    "pack": "electron-builder --dir"
+  },
+  "build": {
+    "appId": "com.dafeiyu.wheel",
+    "productName": "抽奖转盘",
+    "copyright": "Copyright © 2026 大肥鱼",
+    "asar": true,
+    "directories": {
+      "output": "dist",
+      "buildResources": "build"
+    },
+    "files": [
+      "electron/**/*",
+      "src/**/*",
+      "build/icon.png",
+      "package.json"
+    ],
+    "win": {
+      "icon": "build/icon.ico",
+      "target": [
+        {
+          "target": "portable",
+          "arch": [
+            "x64"
+          ]
+        }
+      ]
+    },
+    "portable": {
+      "artifactName": "DaFeiYuWheel-${version}-portable.exe",
+      "requestExecutionLevel": "user"
+    },
+    "mac": {
+      "icon": "build/icon.png",
+      "category": "public.app-category.utilities",
+      "target": [
+        "dmg"
+      ]
+    },
+    "linux": {
+      "icon": "build/icon.png",
+      "category": "Utility",
+      "target": [
+        "AppImage"
+      ]
+    }
+  },
+  "devDependencies": {
+    "electron": "^45.0.0",
+    "electron-builder": "^26.18.0"
+  }
+}
