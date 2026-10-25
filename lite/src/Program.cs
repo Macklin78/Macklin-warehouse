@@ -11,8 +11,17 @@ using System.Reflection;
 using System.Runtime.InteropServices;
 using System.Threading.Tasks;
 using System.Windows.Forms;
+
 using Microsoft.Web.WebView2.Core;
 using Microsoft.Web.WebView2.WinForms;
+// 程序集信息（exe 文件属性里显示的"作者/公司"）
+[assembly: AssemblyTitle("抽奖转盘 轻量版")]
+[assembly: AssemblyDescription("带权重的抽奖转盘 · WebView2 轻量版")]
+[assembly: AssemblyProduct("抽奖转盘")]
+[assembly: AssemblyCompany("Macklin78")]
+[assembly: AssemblyCopyright("Copyright (c) 2026 Macklin78")]
+[assembly: AssemblyVersion("1.1.0.0")]
+[assembly: AssemblyFileVersion("1.1.0.0")]
 
 namespace DaFeiYuWheelLite
 {

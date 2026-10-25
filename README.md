@@ -151,7 +151,7 @@ npm start          # 桌面版能正常启动
 
 ## 📄 License
 
-[MIT](LICENSE) © 2026 大肥鱼
+[MIT](LICENSE) © 2026 Macklin78
 
 ---
 

@@ -97,7 +97,7 @@ https://<你的用户名>.github.io/dafiyu-wheel/src/
 | 图标 | 替换 `build/icon.ico`（Windows）和 `build/icon.png`（mac/Linux，512×512 以上） |
 | 默认奖品 | `src/app.js` 的 `DEFAULT_NAMES` |
 | 扇区配色 | `src/app.js` 的 `PALETTE` |
-| 许可证署名 | `LICENSE` 里的 `Copyright (c) 2026 大肥鱼` |
+| 许可证署名 | `LICENSE` 里的 `Copyright (c) 2026 Macklin78` |
 
 ## 8. 常见问题
 
