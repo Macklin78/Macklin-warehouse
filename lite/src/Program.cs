@@ -1,4 +1,4 @@
-// 抽奖转盘 · 轻量版（WebView2 宿主）
+// 抽奖转盘 · 轻量版（用 Windows 自带的 WebView2 显示界面）
 // 目标框架：.NET Framework 4.6.2+（Windows 10/11 自带）
 // 编译：csc /target:winexe /platform:x64（见 build.bat）
 // 体积特点：单个 exe ≈ 2.6 MB，依赖系统自带的 Edge WebView2 运行时
