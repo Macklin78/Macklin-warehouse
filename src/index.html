@@ -70,7 +70,9 @@
       <div class="history" id="historyList"></div>
 
       <div class="hint">
-        小提示：权重可以填小数（如 0.5）。每行右侧百分比为该奖品当前的中奖概率，合计 100%。
+        小提示：权重可以填小数（如 0.5）。每行右侧百分比为该奖品当前的中奖概率，合计 100%。<br />
+        导入支持 <b>json / txt / csv / tsv / md / xlsx</b>：一行一个奖品，
+        写成「名称 权重」、「名称,权重」或「名称,权重,#颜色」都行；带表头、注释行、Excel 表格也能认。
       </div>
     </div>
     <div class="panel-foot">
@@ -80,7 +82,9 @@
         <button class="btn" id="importBtn" type="button">导入配置</button>
       </div>
       <button class="btn primary foot-main" id="doneBtn" type="button">完成</button>
-      <input type="file" id="fileInput" accept=".json,application/json" style="display:none" />
+      <input type="file" id="fileInput"
+             accept=".json,.txt,.csv,.tsv,.md,.markdown,.xlsx,application/json,text/plain,text/csv,text/markdown,application/vnd.openxmlformats-officedocument.spreadsheetml.sheet"
+             style="display:none" />
     </div>
   </div>
 </div>

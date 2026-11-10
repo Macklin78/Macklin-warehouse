@@ -1,7 +1,7 @@
 {
   "name": "dafiyu-wheel",
   "productName": "抽奖转盘",
-  "version": "1.1.0",
+  "version": "1.1.1",
   "description": "带权重的抽奖转盘 · A weighted lottery / lucky wheel, runs as a desktop app or a single web page.",
   "main": "electron/main.js",
   "author": "Macklin78",

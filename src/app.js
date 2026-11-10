@@ -758,35 +758,331 @@
   var fileInput = document.getElementById('fileInput');
   document.getElementById('importBtn').addEventListener('click', function(){ fileInput.click(); });
 
+  /* ---------------- 导入文件解析 ---------------- */
+
+  var COLOR_WORDS = {
+    '红': '#f04438', '红色': '#f04438', '绿': '#34c759', '绿色': '#34c759',
+    '蓝': '#2f6bf0', '蓝色': '#2f6bf0', '黄': '#ffcc00', '黄色': '#ffcc00',
+    '紫': '#7a5cf0', '紫色': '#7a5cf0', '橙': '#ff9500', '橙色': '#ff9500',
+    '青': '#00a6e0', '青色': '#00a6e0', '粉': '#ff5c8a', '粉色': '#ff5c8a',
+    '金': '#d4a017', '金色': '#d4a017', '灰': '#8b8f96', '灰色': '#8b8f96'
+  };
+
+  var HEADER_WORDS = ['名称', '名字', '奖品', '奖项', '项目', '奖池', 'prize', 'name', 'item'];
+  var HEADER_WEIGHT = ['权重', '概率', '比例', '重量', 'weight', 'prob', 'odd'];
+
+  function looksColor(s) {
+    var t = String(s == null ? '' : s).trim();
+    if (/^#([0-9a-fA-F]{6})$/.test(t)) return t.toLowerCase();
+    if (/^#([0-9a-fA-F]{3})$/.test(t)) {
+      return ('#' + t[1] + t[1] + t[2] + t[2] + t[3] + t[3]).toLowerCase();
+    }
+    if (COLOR_WORDS[t]) return COLOR_WORDS[t];
+    return null;
+  }
+
+  function looksWeight(s) {
+    var t = String(s == null ? '' : s).trim();
+    if (!t) return false;
+    if (/^(权重|概率|比例|重量|weight)\s*[:：=]?\s*\d/.test(t)) return true;
+    return /^\d+(\.\d+)?\s*[%％]?$/.test(t);
+  }
+
+  function parseWeight(s) {
+    var t = String(s == null ? '' : s).trim();
+    t = t.replace(/^(权重|概率|比例|重量|weight)\s*[:：=]?\s*/i, '').replace(/[%％]/g, '');
+    var v = parseFloat(t);
+    if (!isFinite(v) || v < 0) return 1;
+    return v;
+  }
+
+  function isHeaderRow(cells) {
+    var joined = cells.join(' ').toLowerCase();
+    var hasName = HEADER_WORDS.some(function(w){ return joined.indexOf(w) >= 0; });
+    return hasName && HEADER_WEIGHT.some(function(w){ return joined.indexOf(w) >= 0; });
+  }
+
+  function splitCells(line) {
+    var raw = String(line == null ? '' : line).trim();
+    // 去掉 Markdown 列表符号 / 中文序号
+    raw = raw.replace(/^[-*+•]\s+/, '').replace(/^\d+\s*[.、)]\s*/, '').trim();
+    if (!raw) return null;
+    if (/^(#|\/\/|;|＞|>)/.test(raw)) return null;          // 注释行
+    if (/^[-=|\s:]+$/.test(raw)) return null;                // Markdown 表格分隔行 / 横线
+
+    var cells;
+    if (raw.charAt(0) === '|') {
+      cells = raw.replace(/^\|/, '').replace(/\|$/, '').split('|');
+    } else if (raw.indexOf('\t') >= 0) {
+      cells = raw.split('\t');
+    } else if (/[,，;；]/.test(raw)) {
+      cells = raw.split(/[,，;；]/);
+    } else {
+      cells = raw.split(/\s+/);
+    }
+    cells = cells.map(function(t){ return String(t).trim(); })
+                 .filter(function(t){ return t !== ''; });
+    return cells.length ? cells : null;
+  }
+
+  // 一行 → 一个奖品；认不出返回 null
+  function parseLine(line, index) {
+    var cells = splitCells(line);
+    if (!cells) return null;
+    if (isHeaderRow(cells)) return null;
+
+    var name, weight = 1, color = null;
+
+    if (cells.length === 1) {
+      name = cells[0];
+    } else {
+      // 找权重：从左往右第一个"像权重"的格子
+      var wIdx = -1;
+      for (var i = 0; i < cells.length; i++) {
+        if (looksWeight(cells[i])) { wIdx = i; break; }
+      }
+      if (wIdx === -1) wIdx = cells.length - 1;
+
+      var parts = [];
+      for (var j = 0; j < cells.length; j++) {
+        if (j === wIdx) continue;
+        var c = looksColor(cells[j]);
+        if (c) { color = c; continue; }
+        parts.push(cells[j]);
+      }
+      name = parts.join(' ').trim() || cells[0];
+      weight = looksWeight(cells[wIdx]) ? parseWeight(cells[wIdx]) : 1;
+    }
+
+    name = String(name || '').trim();
+    if (!name) return null;
+    // 纯数字当名字没意义（多半是表格序号列）
+    if (/^\d+$/.test(name) && cells.length > 1) return null;
+
+    return {
+      name: name.slice(0, 12),
+      weight: (isFinite(weight) && weight >= 0) ? weight : 1,
+      color: color || PALETTE[(index || 0) % PALETTE.length]
+    };
+  }
+
+  function itemsFromLines(text) {
+    var lines = String(text).split(/\r?\n/);
+    var out = [];
+    for (var i = 0; i < lines.length; i++) {
+      var it = parseLine(lines[i], out.length);
+      if (it) out.push(it);
+    }
+    return out;
+  }
+
+  function itemsFromJSON(text) {
+    var d = JSON.parse(text);
+    var arr = Array.isArray(d) ? d : (d && (d.items || d.prizes || d.list));
+    if (!Array.isArray(arr)) throw new Error('json 结构不认识');
+    return arr.map(function(it, i){
+      if (typeof it === 'string') {
+        return { name: it.slice(0, 12), weight: 1, color: PALETTE[i % PALETTE.length] };
+      }
+      var name = (it && (it.name || it['名称'] || it['奖品'] || it['名字'])) || ('奖品' + (i + 1));
+      var w = Number(it && (it.weight != null ? it.weight : (it['权重'] != null ? it['权重'] : it['概率'])));
+      return {
+        name: String(name).slice(0, 12),
+        weight: (isFinite(w) && w >= 0) ? w : 1,
+        color: looksColor(it && it.color) || normalizeColor(it && it.color, i)
+      };
+    });
+  }
+
+  /* ---------------- 极简 zip 读取（只为解析 xlsx） ---------------- */
+
+  function zipEntries(buffer) {
+    var dv = new DataView(buffer);
+    var eocd = -1;
+    for (var i = buffer.byteLength - 22; i >= 0 && i > buffer.byteLength - 66000; i--) {
+      if (dv.getUint32(i, true) === 0x06054b50) { eocd = i; break; }
+    }
+    if (eocd < 0) throw new Error('不是有效的 zip/xlsx');
+    var count = dv.getUint16(eocd + 10, true);
+    var p = dv.getUint32(eocd + 16, true);
+    var map = {};
+    for (var k = 0; k < count; k++) {
+      if (dv.getUint32(p, true) !== 0x02014b50) break;
+      var nameLen = dv.getUint16(p + 28, true);
+      var extraLen = dv.getUint16(p + 30, true);
+      var commentLen = dv.getUint16(p + 32, true);
+      var name = new TextDecoder('utf-8').decode(new Uint8Array(buffer, p + 46, nameLen));
+      map[name] = {
+        method: dv.getUint16(p + 10, true),
+        compSize: dv.getUint32(p + 20, true),
+        localOff: dv.getUint32(p + 42, true)
+      };
+      p += 46 + nameLen + extraLen + commentLen;
+    }
+    return { dv: dv, map: map };
+  }
+
+  function readZipEntry(buffer, zip, name) {
+    var e = zip.map[name];
+    if (!e) return Promise.resolve(null);
+    var dv = zip.dv;
+    var lo = e.localOff;
+    if (dv.getUint32(lo, true) !== 0x04034b50) return Promise.reject(new Error('zip 头损坏'));
+    var start = lo + 30 + dv.getUint16(lo + 26, true) + dv.getUint16(lo + 28, true);
+    var raw = new Uint8Array(buffer, start, e.compSize);
+    if (e.method === 0) return Promise.resolve(new TextDecoder('utf-8').decode(raw));
+    if (typeof DecompressionStream === 'undefined') {
+      return Promise.reject(new Error('这个浏览器不支持解压 xlsx，请另存为 csv/txt'));
+    }
+    var stream = new Blob([raw]).stream().pipeThrough(new DecompressionStream('deflate-raw'));
+    return new Response(stream).arrayBuffer().then(function(ab){
+      return new TextDecoder('utf-8').decode(new Uint8Array(ab));
+    });
+  }
+
+  function colIndex(ref) {
+    var m = /^([A-Z]+)/.exec(String(ref || '').toUpperCase());
+    if (!m) return 0;
+    var s = m[1], n = 0;
+    for (var i = 0; i < s.length; i++) n = n * 26 + (s.charCodeAt(i) - 64);
+    return n - 1;
+  }
+
+  function parseXlsx(buffer) {
+    var zip = zipEntries(buffer);
+    var shared = [];
+    return readZipEntry(buffer, zip, 'xl/sharedStrings.xml').then(function(xml){
+      if (xml) {
+        var doc = new DOMParser().parseFromString(xml, 'application/xml');
+        var sis = doc.getElementsByTagName('si');
+        for (var i = 0; i < sis.length; i++) {
+          var ts = sis[i].getElementsByTagName('t');
+          var s = '';
+          for (var j = 0; j < ts.length; j++) s += ts[j].textContent;
+          shared.push(s);
+        }
+      }
+      // 按 workbook 顺序取第一个工作表
+      var sheetPath = 'xl/worksheets/sheet1.xml';
+      return readZipEntry(buffer, zip, sheetPath).then(function(sh) {
+        if (!sh) throw new Error('xlsx 里没找到工作表');
+        var doc = new DOMParser().parseFromString(sh, 'application/xml');
+        var rows = doc.getElementsByTagName('row');
+        var table = [];
+        for (var r = 0; r < rows.length; r++) {
+          var cells = rows[r].getElementsByTagName('c');
+          var vals = [];
+          for (var c = 0; c < cells.length; c++) {
+            var cell = cells[c];
+            var t = cell.getAttribute('t');
+            var idx = colIndex(cell.getAttribute('r'));
+            var vNode = cell.getElementsByTagName('v')[0];
+            var val = vNode ? vNode.textContent : '';
+            if (t === 's') val = shared[parseInt(val, 10)] || '';
+            else if (t === 'inlineStr') {
+              var isNode = cell.getElementsByTagName('t')[0];
+              val = isNode ? isNode.textContent : '';
+            }
+            vals[idx] = val;
+          }
+          table.push(vals);
+        }
+        return table;
+      });
+    }).then(function(table){
+      var out = [];
+      for (var i = 0; i < table.length; i++) {
+        var cells = (table[i] || []).map(function(v){ return String(v == null ? '' : v).trim(); })
+                                      .filter(function(v){ return v !== ''; });
+        if (!cells.length) continue;
+        if (isHeaderRow(cells)) continue;
+        var it = parseLine(cells.join('\t'), out.length);
+        if (it) out.push(it);
+      }
+      return out;
+    });
+  }
+
+  /* ---------------- 导入入口 ---------------- */
+
+  function readArrayBuffer(file) {
+    return new Promise(function(resolve, reject){
+      var fr = new FileReader();
+      fr.onload = function(){ resolve(fr.result); };
+      fr.onerror = function(){ reject(new Error('读取文件失败')); };
+      fr.readAsArrayBuffer(file);
+    });
+  }
+
+  function decodeText(buffer) {
+    var bytes = new Uint8Array(buffer);
+    if (bytes[0] === 0xEF && bytes[1] === 0xBB && bytes[2] === 0xBF) bytes = bytes.subarray(3); // UTF-8 BOM
+    var utf8 = new TextDecoder('utf-8').decode(bytes);
+    var bad = (utf8.match(/\uFFFD/g) || []).length;
+    if (bad > 0) {
+      try {
+        var gbk = new TextDecoder('gbk').decode(bytes);   // 老记事本存的 GBK
+        if ((gbk.match(/\uFFFD/g) || []).length < bad) return gbk;
+      } catch (e) { /* 浏览器不支持 gbk 就算了 */ }
+    }
+    return utf8;
+  }
+
+  function applyImportedItems(items, formatName) {
+    if (!items || !items.length) throw new Error('没解析出奖品');
+    state.items = items.map(function(it, i){
+      return {
+        id: uid(),
+        name: String(it.name || ('奖品' + (i + 1))).slice(0, 12),
+        weight: (isFinite(it.weight) && it.weight >= 0) ? it.weight : 1,
+        color: looksColor(it.color) || normalizeColor(it.color, i)
+      };
+    });
+    state.rotation = 0;
+    renderList();
+    draw();
+    saveNow();
+    toast('已从 ' + formatName + ' 导入 ' + state.items.length + ' 个奖品');
+  }
+
+  function handleImportFile(file) {
+    var ext = (file.name.split('.').pop() || '').toLowerCase();
+
+    if (ext === 'xlsx' || ext === 'xlsm') {
+      return readArrayBuffer(file).then(parseXlsx).then(function(items){
+        applyImportedItems(items, 'Excel');
+      });
+    }
+
+    return readArrayBuffer(file).then(function(buf){
+      var text = decodeText(buf);
+      // json 先按 json 试；其它格式按行解析，都不行再兜底
+      if (ext === 'json') {
+        applyImportedItems(itemsFromJSON(text), 'JSON');
+        return;
+      }
+      var items = itemsFromLines(text);
+      if (items.length) { applyImportedItems(items, ext.toUpperCase() || '文本'); return; }
+      // 兜底：可能是没改扩展名的 json
+      applyImportedItems(itemsFromJSON(text), 'JSON');
+    });
+  }
+
+  function importFailed(err) {
+    var msg = (err && err.message) ? err.message : '';
+    if (msg.indexOf('不支持解压') >= 0) toast(msg);
+    else toast('认不出来这个文件，试试 json / txt / csv / tsv / md / xlsx');
+  }
+
   fileInput.addEventListener('change', function(){
     var f = fileInput.files && fileInput.files[0];
     if (!f) return;
-    var fr = new FileReader();
-    fr.onload = function(){
-      try {
-        var d = JSON.parse(String(fr.result));
-        var arr = Array.isArray(d) ? d : (d && d.items);
-        if (!Array.isArray(arr) || !arr.length) throw new Error('bad');
-        state.items = arr.map(function(it, i){
-          var w = Number(it && it.weight);
-          return {
-            id: uid(),
-            name: String((it && it.name) || ('奖品' + (i + 1))).slice(0, 12),
-            weight: (isFinite(w) && w > 0) ? w : 1,
-            color: normalizeColor(it && it.color, i)
-          };
-        });
-        state.rotation = 0;
-        renderList();
-        draw();
-        saveNow();
-        toast('已导入 ' + state.items.length + ' 个奖品');
-      } catch (err) {
-        toast('文件格式不正确，导入失败');
-      }
+    handleImportFile(f).then(function(){
       fileInput.value = '';
-    };
-    fr.readAsText(f);
+    }).catch(function(err){
+      importFailed(err);
+      fileInput.value = '';
+    });
   });
 
   document.getElementById('clearHistory').addEventListener('click', function(){
@@ -868,6 +1164,8 @@
     lastResult: function(){
       return state.history[0] ? state.history[0].name : null;
     },
-    spinInstant: function(){ spin(true); }
+    spinInstant: function(){ spin(true); },
+    // 导入功能的测试入口：传一个 File 对象，返回 Promise
+    importFile: function(file){ return handleImportFile(file); }
   };
 })();
